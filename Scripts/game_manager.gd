@@ -47,10 +47,10 @@ func check_win():
 
 func end_game(winner: String):
 	game_over = true
-	ball.linear_velocity = Vector2.ZERO
 	win_label.text = "%s wins!" % winner
 	win_panel.visible = true
-	get_tree().paused = true
+	call_deferred("_finalize_end_game")
+	ball.visible = false
 
 func _on_restart_pressed():
 	player_score = 0
@@ -60,3 +60,9 @@ func _on_restart_pressed():
 	update_score_label()
 	ball.reset_ball()
 	get_tree().paused = false
+	ball.visible = true
+	
+func _finalize_end_game():
+	ball.reset_ball()              # always resets, ignores reset_on_score entirely —
+	ball.linear_velocity = Vector2.ZERO   # ...then immediately stop it, so it sits still on the win screen
+	get_tree().paused = true

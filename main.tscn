@@ -212,9 +212,9 @@ grow_vertical = 2
 
 [node name="WinLabel" type="Label" parent="UI/WinPanel" unique_id=519519149]
 layout_mode = 0
-offset_left = 348.005
+offset_left = 330.63
 offset_top = 135.0
-offset_right = 388.005
+offset_right = 370.63
 offset_bottom = 158.0
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -222,8 +222,8 @@ vertical_alignment = 1
 [node name="RestartButton" type="Button" parent="UI/WinPanel" unique_id=276281122]
 process_mode = 3
 layout_mode = 0
-offset_left = 361.825
+offset_left = 362.505
 offset_top = 231.025
-offset_right = 426.825
+offset_right = 427.505
 offset_bottom = 262.02545
 text = "Restart"
