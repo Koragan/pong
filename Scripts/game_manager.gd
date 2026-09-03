@@ -1,43 +1,62 @@
 extends Node
+
 @export var ball_path: NodePath
 @export var win_score: int = 5
 
+@export var score_label_path: NodePath
+@export var win_panel_path: NodePath
+@export var win_label_path: NodePath
+@export var restart_button_path: NodePath
+
 @onready var ball: RigidBody2D = get_node(ball_path)
+@onready var score_label: Label = get_node(score_label_path)
+@onready var win_panel: Control = get_node(win_panel_path)
+@onready var win_label: Label = get_node(win_label_path)
+@onready var restart_button: Button = get_node(restart_button_path)
+
 var player_score = 0
 var opponent_score = 0
 var game_over = false
 
 func _ready():
 	ball.score_point.connect(_on_score_point)
+	restart_button.pressed.connect(_on_restart_pressed)
+	win_panel.visible = false
+	update_score_label()
 
 func _on_score_point(scorer: String):
 	if game_over:
-		return  # ignore further scoring once someone's won
+		return
 
 	if scorer == "player":
 		player_score += 1
 	else:
 		opponent_score += 1
 
-	print("Player: %d   Opponent: %d" % [player_score, opponent_score])
+	update_score_label()
 	check_win()
+
+func update_score_label():
+	score_label.text = "%d   -   %d" % [player_score, opponent_score]
 
 func check_win():
 	if player_score >= win_score:
-		end_game("Player")
-	elif opponent_score >= win_score:
 		end_game("Opponent")
+	elif opponent_score >= win_score:
+		end_game("Player")
 
 func end_game(winner: String):
 	game_over = true
-	print("%s wins!" % winner)
 	ball.linear_velocity = Vector2.ZERO
+	win_label.text = "%s wins!" % winner
+	win_panel.visible = true
 	get_tree().paused = true
 
-#debug
-#func _process(delta: float) -> void:
-#	print(player_score)
-#	pass
-	
-	
-	
+func _on_restart_pressed():
+	player_score = 0
+	opponent_score = 0
+	game_over = false
+	win_panel.visible = false
+	update_score_label()
+	ball.reset_ball()
+	get_tree().paused = false

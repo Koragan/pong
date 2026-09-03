@@ -26,7 +26,7 @@ Main (Node2D)
 │   └── West (StaticBody2D)
 ├── GameManager (Node)
 └── PostFX (CanvasLayer, Layer = 10)
-    └── CRTOverlay (ColorRect, Full Rect anchor, Mouse Filter = Ignore)
+	└── CRTOverlay (ColorRect, Full Rect anchor, Mouse Filter = Ignore)
 ```
 
 Note: exact node positions/scales were manually adjusted from any tutorial defaults — don't assume specific X/Y coordinates, check the actual scene.
@@ -231,9 +231,9 @@ void fragment() {
 	vec2 uv = curve_uv(SCREEN_UV, aspect);
 
 	float mask = smoothstep(0.0, border_softness, uv.x)
-	           * smoothstep(0.0, border_softness, uv.y)
-	           * smoothstep(0.0, border_softness, 1.0 - uv.x)
-	           * smoothstep(0.0, border_softness, 1.0 - uv.y);
+			   * smoothstep(0.0, border_softness, uv.y)
+			   * smoothstep(0.0, border_softness, 1.0 - uv.x)
+			   * smoothstep(0.0, border_softness, 1.0 - uv.y);
 
 	uv = clamp(uv, 0.0, 1.0);
 
