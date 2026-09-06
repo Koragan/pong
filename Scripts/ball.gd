@@ -18,6 +18,11 @@ extends RigidBody2D
 @export var boring_x_range_threshold: float = 80.0
 @export var boring_y_range_threshold: float = 80.0
 
+
+@export var crt_overlay_path: NodePath
+@onready var crt_mat: ShaderMaterial = get_node(crt_overlay_path).material
+
+
 signal ball_reset
 signal score_point(player)
 signal paddle_hit(paddle_name)
@@ -32,15 +37,20 @@ var window_max_x: float = 0.0
 var window_min_y: float = 0.0
 var window_max_y: float = 0.0
 
+var shader_effect_value: float = 2
+
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 func _ready():
+	shader_effect_value = 2
 	linear_velocity = Vector2(300, -200)
 	body_entered.connect(_on_body_entered)
 	window_min_x = position.x
 	window_max_x = position.x
 	window_min_y = position.y
 	window_max_y = position.y
+	shader_effect_value = 2
+	print(shader_effect_value)
 
 func _physics_process(delta):
 	if linear_velocity.length() > max_speed:
@@ -125,6 +135,8 @@ func _boost_speed():
 	else:
 		linear_velocity *= high_speed_increase_on_paddle_hit
 	print(linear_velocity.length())
+	shader_effect_value += 0.1
+	crt_mat.set_shader_parameter("curvature", shader_effect_value)
  
 
 func _trigger_angry_recovery():
@@ -159,7 +171,7 @@ func _start_angry_recovery():
 func reset_ball(hard_reset: bool = false):
 	position = get_viewport_rect().size / 2
 	var angle = randf_range(-45, 45) * PI / 180
-
+	shader_effect_value = 2
 	var speed: float
 	if hard_reset:
 		speed = base_speed

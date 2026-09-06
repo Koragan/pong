@@ -1,14 +1,19 @@
 extends Node
 
-@export var ball_path: NodePath
 @export var win_score: int = 5
+@export var max_speed_for_tint: float = 500.0
 
+@export var ball_path: NodePath
 @export var score_label_path: NodePath
 @export var win_panel_path: NodePath
 @export var win_label_path: NodePath
 @export var restart_button_path: NodePath
 @export var background_path: NodePath
+@export var crt_overlay_path: NodePath
+@export var camera_path: NodePath
 
+@onready var camera: Camera2D = get_node(camera_path)
+@onready var crt_mat: ShaderMaterial = get_node(crt_overlay_path).material
 @onready var ball: RigidBody2D = get_node(ball_path)
 @onready var score_label: Label = get_node(score_label_path)
 @onready var win_panel: Control = get_node(win_panel_path)
@@ -25,6 +30,12 @@ func _ready():
 	restart_button.pressed.connect(_on_restart_pressed)
 	win_panel.visible = false
 	update_score_label()
+
+func _process(_delta):
+	var speed_t = clamp(ball.linear_velocity.length() / max_speed_for_tint, 0.0, 1.0)
+	var base_tint = Color(1.0, 0.0, 0.067, 1.0)
+	var hot_tint = Color(0.851, 1.0, 0.898, 1.0)
+	crt_mat.set_shader_parameter("tint", base_tint.lerp(hot_tint, speed_t))
 
 func _on_score_point(scorer: String):
 	if game_over:
@@ -64,6 +75,10 @@ func _finalize_end_game():
 
 func _on_restart_pressed():
 	Engine.time_scale = 1.0
+	SFX.play_paddle_hit()
+	SFX.play_score()
+	SFX.play_wall_bounce()
+	SFX.play_win()
 	background.z_index = -3
 	ball.visible = true
 	player_score = 0

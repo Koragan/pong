@@ -27,15 +27,11 @@ func _get_wall_inner_x(wall: StaticBody2D, is_west: bool) -> float:
 	var center_x = shape_node.global_position.x
 	return center_x + half_width if is_west else center_x - half_width
 
-## Projects the ball's path — bouncing off North/South as needed — to find
-## how soon and where it will cross the East or West scoring wall.
-## Called fresh every frame, so it's always current, including right after
-## a bounce changes direction.
 func predict_scoring_wall_hit() -> Dictionary:
 	var pos = ball.global_position
 	var dir = ball.linear_velocity.normalized()
 	if dir.length() == 0.0:
-		return {"time": INF, "scorer": ""}
+		return {"distance": INF, "scorer": ""}
 
 	var top_y = _get_wall_inner_y(north_wall, true)
 	var bottom_y = _get_wall_inner_y(south_wall, false)
@@ -62,17 +58,15 @@ func predict_scoring_wall_hit() -> Dictionary:
 
 		var dist = min(dist_to_target, dist_to_wall)
 		if dist == INF or dist <= 0:
-			return {"time": INF, "scorer": ""}
+			return {"distance": INF, "scorer": ""}
 
 		pos += dir * dist
 		traveled += dist
 
 		if dist == dist_to_target:
-			var speed = ball.linear_velocity.length()
-			var time = traveled / speed if speed > 0.0 else INF
-			return {"time": time, "scorer": scorer}
+			return {"distance": traveled, "scorer": scorer}
 
 		dir.y = -dir.y
 		bounces += 1
 
-	return {"time": INF, "scorer": ""}
+	return {"distance": INF, "scorer": ""}
