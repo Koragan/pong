@@ -7,6 +7,8 @@
 [ext_resource type="Script" uid="uid://brpmiwgb6qysr" path="res://Scripts/camera_2d.gd" id="5_272bh"]
 [ext_resource type="Shader" uid="uid://cywt5pvhipwin" path="res://Shaders/ctr.gdshader" id="5_lquwl"]
 [ext_resource type="Texture2D" uid="uid://1uptcfb6ko5r" path="res://logo.jpeg" id="6_7mycd"]
+[ext_resource type="Texture2D" uid="uid://b2gdfkwbbcu4h" path="res://Koragan.png" id="8_kek77"]
+[ext_resource type="Script" uid="uid://b7xuxpyl0q71q" path="res://Scripts/trajectory_predictor.gd" id="9_kek77"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sp1m1"]
 size = Vector2(800, 20)
@@ -54,6 +56,7 @@ score_label_path = NodePath("../UI/ScoreLabel")
 win_panel_path = NodePath("../UI/WinPanel")
 win_label_path = NodePath("../UI/WinPanel/WinLabel")
 restart_button_path = NodePath("../UI/WinPanel/RestartButton")
+background_path = NodePath("../ColorRect")
 
 [node name="Walls" type="Node2D" parent="." unique_id=230215125]
 position = Vector2(445, 31)
@@ -123,7 +126,7 @@ shape = SubResource("RectangleShape2D_0xm2m")
 position = Vector2(805, 231)
 script = ExtResource("1_0xm2m")
 ball_path = NodePath("../Ball")
-skill_level = 0.7
+skill_level = 0.3
 
 [node name="ColorRect" type="ColorRect" parent="OpponentPaddle" unique_id=1696748602]
 offset_left = -7.0
@@ -150,21 +153,16 @@ position = Vector2(-8, 0)
 shape = SubResource("RectangleShape2D_2tqtb")
 
 [node name="Ball" type="RigidBody2D" parent="." unique_id=1295841442]
-position = Vector2(445, 231)
+position = Vector2(494, 231)
 physics_material_override = SubResource("PhysicsMaterial_0xm2m")
 gravity_scale = 0.0
 lock_rotation = true
 contact_monitor = true
 max_contacts_reported = 4
-linear_velocity = Vector2(200, -200)
+linear_velocity = Vector2(300, -200)
 linear_damp_mode = 1
 script = ExtResource("1_ig7tw")
-reset_on_score = false
-stress_hit_threshold = 8
-stress_time_window = 0.9
-angry_pause_duration = 0.9
-recover_travel_duration = 1.0
-boring_check_interval = 10.0
+boring_check_interval = 5.0
 
 [node name="Visual" type="ColorRect" parent="Ball" unique_id=152513226]
 offset_left = -5.0
@@ -182,13 +180,17 @@ offset = Vector2(-400, 0)
 zoom = Vector2(0.9, 0.9)
 script = ExtResource("5_272bh")
 ball_path = NodePath("../Ball")
+predictor_path = NodePath("../TrajectoryPredictor")
+game_manager_path = NodePath("../GameManager")
+slowmo_scale = 0.01
+transition_duration = 2.0
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1141465357]
 z_index = -3
-offset_left = -10.0
-offset_top = -10.0
-offset_right = 910.0
-offset_bottom = 450.0
+offset_left = -500.0
+offset_top = -596.0
+offset_right = 1424.0
+offset_bottom = 934.0
 color = Color(0, 0, 0, 1)
 
 [node name="PostFX" type="CanvasLayer" parent="." unique_id=132215285]
@@ -247,3 +249,17 @@ text_overrun_behavior = 2
 autowrap_trim_flags = 0
 icon_alignment = 1
 expand_icon = true
+
+[node name="stamp" type="Sprite2D" parent="UI/WinPanel" unique_id=1669403408]
+position = Vector2(400, 300)
+scale = Vector2(0.53, 0.53)
+texture = ExtResource("8_kek77")
+
+[node name="TrajectoryPredictor" type="Node" parent="." unique_id=593127609]
+script = ExtResource("9_kek77")
+ball_path = NodePath("../Ball")
+north_wall_path = NodePath("../Walls/North")
+south_wall_path = NodePath("../Walls/South")
+east_wall_path = NodePath("../Walls/East")
+west_wall_path = NodePath("../Walls/West")
+max_distance = 450.0

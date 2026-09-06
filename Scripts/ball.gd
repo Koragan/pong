@@ -1,20 +1,20 @@
 extends RigidBody2D
 
 @export var max_speed = 1500
-@export var reset_on_score: bool = true
+@export var reset_on_score: bool = false
 @export var low_speed_increase_on_paddle_hit: float = 1.15
 @export var high_speed_increase_on_paddle_hit: float = 1.009
 
 @export var base_speed: float = 300
 @export var reset_speed_retention: float = 0.85   # fraction of pre-reset speed carried into the next round
 
-@export var stress_hit_threshold: int = 4
-@export var stress_time_window: float = 0.3
-@export var angry_pause_duration: float = 0.6
-@export var recover_travel_duration: float = 0.9
+@export var stress_hit_threshold: int = 8
+@export var stress_time_window: float = 0.9
+@export var angry_pause_duration: float = 1.4
+@export var recover_travel_duration: float = 1.0
 
 @export var offscreen_margin: float = 100.0
-@export var boring_check_interval: float = 3.0
+@export var boring_check_interval: float = 10
 @export var boring_x_range_threshold: float = 80.0
 @export var boring_y_range_threshold: float = 80.0
 
@@ -35,7 +35,7 @@ var window_max_y: float = 0.0
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 func _ready():
-	linear_velocity = Vector2(200, -150)
+	linear_velocity = Vector2(300, -200)
 	body_entered.connect(_on_body_entered)
 	window_min_x = position.x
 	window_max_x = position.x

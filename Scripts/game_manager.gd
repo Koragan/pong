@@ -7,12 +7,14 @@ extends Node
 @export var win_panel_path: NodePath
 @export var win_label_path: NodePath
 @export var restart_button_path: NodePath
+@export var background_path: NodePath
 
 @onready var ball: RigidBody2D = get_node(ball_path)
 @onready var score_label: Label = get_node(score_label_path)
 @onready var win_panel: Control = get_node(win_panel_path)
 @onready var win_label: Label = get_node(win_label_path)
 @onready var restart_button: Button = get_node(restart_button_path)
+@onready var background: ColorRect = get_node(background_path)
 
 var player_score = 0
 var opponent_score = 0
@@ -47,6 +49,7 @@ func check_win():
 
 func end_game(winner: String):
 	ball.visible = false
+	background.z_index = 2
 	game_over = true
 	SFX.play_win()
 	win_label.text = "%s wins!" % winner
@@ -54,11 +57,14 @@ func end_game(winner: String):
 	call_deferred("_finalize_end_game")
 
 func _finalize_end_game():
+	Engine.time_scale = 1.0   # safety net in case a critical moment was still active
 	ball.reset_ball(true)          # was: ball.reset_ball()
 	ball.linear_velocity = Vector2.ZERO
 	get_tree().paused = true
 
 func _on_restart_pressed():
+	Engine.time_scale = 1.0
+	background.z_index = -3
 	ball.visible = true
 	player_score = 0
 	opponent_score = 0

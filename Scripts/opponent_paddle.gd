@@ -7,7 +7,7 @@ extends CharacterBody2D
 var post_hit_pause_timer: float = 0.0
 
 ## Single knob: 0.0 = worst possible opponent, 1.0 = near-perfect keeper.
-@export_range(0.0, 1.0) var skill_level: float = 0.5
+@export_range(0.0, 1.0, 0.1) var skill_level: float = 0.5
 
 # What skill_level interpolates between — tune these bounds to change how
 # extreme "easy" vs "hard" feels without touching any logic below.
