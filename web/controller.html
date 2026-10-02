@@ -19,14 +19,15 @@
     const status = document.getElementById("status");
     const certLink = document.getElementById("cert-link");
     const ws = new WebSocket("wss://" + location.hostname + ":8444");
+    let heartbeat;
     ws.onopen = () => {
       status.textContent = "Connected to Pong";
       ws.send(JSON.stringify({ type: "hello" }));
+      heartbeat = setInterval(() => ws.send(JSON.stringify({ type: "ping" })), 2000);
     };
-    ws.onclose = () => { status.textContent = "Disconnected"; };
-    ws.onerror = () => {
-      certLink.href = "https://" + location.hostname + ":8444";
-      certLink.style.display = "block";
+    ws.onclose = () => {
+      clearInterval(heartbeat);
+      status.textContent = "Disconnected";
     };
   </script>
 </body>

@@ -25,19 +25,23 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1160197479]
 layout_mode = 2
 text = "Phone Multiplayer"
+horizontal_alignment = 1
 
 [node name="AddressLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=23130797]
 layout_mode = 2
+horizontal_alignment = 1
 
 [node name="QrImage" type="TextureRect" parent="CenterContainer/VBoxContainer" unique_id=62733991]
 texture_filter = 1
-custom_minimum_size = Vector2(300, 300)
+custom_minimum_size = Vector2(200, 200)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
 [node name="StatusLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1191334311]
 layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1477253342]
 layout_mode = 2

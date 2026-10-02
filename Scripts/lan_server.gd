@@ -11,6 +11,7 @@ const CONTROLLER_PAGE := "res://web/controller.html"
 const KEY_PATH := "user://tls.key"
 const CERT_PATH := "user://tls.crt"
 const MAX_REQUEST_BYTES := 8192
+const TIMEOUT_MS := 6000
 
 class HttpClient:
 	var tcp: StreamPeerTCP
@@ -23,6 +24,7 @@ class Player:
 	var tls := StreamPeerTLS.new()
 	var ws := WebSocketPeer.new()
 	var announced := false
+	var last_seen_ms := 0
 
 var _http_server := TCPServer.new()
 var _ws_server := TCPServer.new()
@@ -149,19 +151,26 @@ func _accept_websockets() -> void:
 			p.tcp.disconnect_from_host()
 
 # Returns true once this player is gone and can be dropped.
+
 func _poll_player(p: Player) -> bool:
 	p.ws.poll()
-	match p.ws.get_ready_state():
-		WebSocketPeer.STATE_OPEN:
-			if not p.announced:
-				p.announced = true
-				player_joined.emit(p.id)
-			while p.ws.get_available_packet_count() > 0:
-				var data = JSON.parse_string(p.ws.get_packet().get_string_from_utf8())
-				if data is Dictionary:
-					message_received.emit(p.id, data)
-		WebSocketPeer.STATE_CLOSED:
-			if p.announced:
-				player_left.emit(p.id)
-			return true
-	return false
+	var state := p.ws.get_ready_state()
+	if state == WebSocketPeer.STATE_CONNECTING:
+		return false
+	if state == WebSocketPeer.STATE_OPEN:
+		if not p.announced:
+			p.announced = true
+			p.last_seen_ms = Time.get_ticks_msec()
+			player_joined.emit(p.id)
+		while p.ws.get_available_packet_count() > 0:
+			p.last_seen_ms = Time.get_ticks_msec()  # any traffic counts as alive
+			var data = JSON.parse_string(p.ws.get_packet().get_string_from_utf8())
+			if data is Dictionary and data.get("type", "") != "ping":
+				message_received.emit(p.id, data)
+		if Time.get_ticks_msec() - p.last_seen_ms < TIMEOUT_MS:
+			return false
+		p.ws.close()  # silent for too long, assume it's gone
+	# closing, closed, or timed out: this player is gone
+	if p.announced:
+		player_left.emit(p.id)
+	return true

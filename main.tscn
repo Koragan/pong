@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://brpmiwgb6qysr" path="res://Scripts/camera_2d.gd" id="5_272bh"]
 [ext_resource type="Shader" uid="uid://cywt5pvhipwin" path="res://Shaders/ctr.gdshader" id="5_lquwl"]
 [ext_resource type="Texture2D" uid="uid://1uptcfb6ko5r" path="res://logo.jpeg" id="6_7mycd"]
+[ext_resource type="Script" uid="uid://2cglswdla1k0" path="res://Scripts/restart_button.gd" id="8_4c57u"]
 [ext_resource type="Texture2D" uid="uid://b2gdfkwbbcu4h" path="res://Koragan.png" id="8_kek77"]
 [ext_resource type="Script" uid="uid://b7xuxpyl0q71q" path="res://Scripts/trajectory_predictor.gd" id="9_kek77"]
 
@@ -144,7 +145,6 @@ shape = SubResource("RectangleShape2D_rqpie")
 [node name="PlayerPaddle" type="CharacterBody2D" parent="." unique_id=92150746]
 position = Vector2(85, 231)
 script = ExtResource("2_h2yge")
-control_source = 2
 
 [node name="ColorRect" type="ColorRect" parent="PlayerPaddle" unique_id=808500453]
 offset_left = -8.0
@@ -255,6 +255,7 @@ text_overrun_behavior = 2
 autowrap_trim_flags = 0
 icon_alignment = 1
 expand_icon = true
+script = ExtResource("8_4c57u")
 
 [node name="stamp" type="Sprite2D" parent="UI/WinPanel" unique_id=1669403408]
 position = Vector2(400, 300)
@@ -269,3 +270,5 @@ south_wall_path = NodePath("../Walls/South")
 east_wall_path = NodePath("../Walls/East")
 west_wall_path = NodePath("../Walls/West")
 max_distance = 800.0
+
+[connection signal="mouse_entered" from="UI/WinPanel/RestartButton" to="GameManager" method="_on_restart_button_mouse_entered"]

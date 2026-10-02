@@ -88,3 +88,7 @@ func _on_restart_pressed():
 	update_score_label()
 	ball.reset_ball(true)          # was: ball.reset_ball()
 	get_tree().paused = false
+
+func _on_restart_button_mouse_entered() -> void:
+	SFX.play_paddle_hit()
+	pass # Replace with function body.
