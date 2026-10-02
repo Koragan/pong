@@ -42,7 +42,7 @@ godot --headless --path . --script tests/countdown_test.gd
 node tests/controller_controls_test.cjs
 ```
 
-Close other LAN hosts first. No coverage threshold is configured. Follow `tests/README.md` for real-phone checks, including tilt, certificates, and reconnection. HTTPS/WebSocket ports are 8443/8444; TLS files live under `user://`.
+Run Godot checks sequentially and close other LAN hosts first; they share ports and user data. No coverage threshold is configured. Follow `tests/README.md` for real-phone checks, including tilt, certificates, and reconnection. HTTPS/WebSocket ports are 8443/8444; TLS files live under `user://`.
 
 ## Commit & Pull Request Guidelines
 
@@ -50,6 +50,10 @@ Use descriptive subjects, such as “Add main menu and placeholder lobby scene.�
 
 ## Current Project Status
 
-A CRT-styled, shaking 3–2–1–GO countdown gates match starts and restarts; the ball stays frozen until GO, and disconnections pause the countdown. Two phones control host-started matches through drag, calibrated tilt, or Up/Down buttons. The CRT-styled controller and PC display round-trip ping. Paddle collisions match their visuals; the ball uses continuous collision detection. Phone matches return to the lobby with the final result and reason. Disconnects pause the match with a visible notice; the same controller session can reconnect and resume without losing scores. Single-player retains its restart screen.
+Two phones control native-hosted matches through drag, calibrated tilt, or Up/Down buttons. The controller matches the CRT palette; phones and PC display round-trip ping. Paddle collision boxes match their visuals, and the ball uses continuous collision detection.
 
-In `main.tscn`, select `GameManager` and adjust `Win Score` (default 5; supports 100+) and `Lobby Return Delay` (default 2 seconds). Device tilt and certificate onboarding need validation.
+Match starts and restarts use a 3–2–1–GO countdown with rising tones, impact shake, and a green GO burst. The ball stays frozen and scoring is blocked until GO. Disconnects pause both gameplay and countdown with a visible reason; reconnecting the same controller tab preserves scores and paddle assignment. Reload controller pages after frontend changes. Heartbeat timeout defaults to 30 seconds; delayed ping replies do not force a disconnect.
+
+Phone matches return to the lobby with the winner, final score, and return reason. Single-player retains its restart screen. In `main.tscn`, select `GameManager` to edit `Win Score` (default 5; supports 100+) and `Lobby Return Delay` (2 seconds). Select `UI/Countdown` to edit `Beat Duration` (1 second).
+
+Automated physics, networking, countdown, and controller checks pass; countdown rendering was inspected in Godot. Real-phone tilt, certificate onboarding, and Wi-Fi interruption behavior still need device validation.
