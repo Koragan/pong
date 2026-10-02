@@ -65,6 +65,16 @@
 	let mode = "touch", activePointer = null, axis = 0, y = 0.5, dirty = false;
 	let tiltCenter = null, lastTilt = null, orientationListening = false;
 	let pingSent = null, lastPong = 0;
+	const pendingPings = new Set();
+	const sessionKey = "pong-session:" + location.hostname;
+	let controllerStatus = "Connected • waiting in lobby";
+	let sessionToken;
+	try { sessionToken = sessionStorage.getItem(sessionKey); } catch {}
+	if (!sessionToken) {
+	  sessionToken = typeof crypto.randomUUID === "function" ? crypto.randomUUID()
+		: Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("");
+	  try { sessionStorage.setItem(sessionKey, sessionToken); } catch {}
+	}
 	function send(data) {
 	  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
 	}
@@ -76,10 +86,11 @@
 	function measurePing() {
 	  if (lastPong && performance.now() - lastPong > 6000) {
 		ping.textContent = "PING —";
-		ws.close();
-		return;
+		status.textContent = "Connection slow • waiting for the PC";
 	  }
 	  pingSent = performance.now();
+	  pendingPings.add(pingSent);
+	  if (pendingPings.size > 30) pendingPings.delete(pendingPings.values().next().value);
 	  send({ type: "ping", sent: pingSent });
 	}
 	function connect() {
@@ -88,7 +99,7 @@
 	  ws.onopen = () => {
 		status.textContent = "Connected • start the match on the PC";
 		certLink.hidden = true;
-		send({ type: "hello" });
+		send({ type: "hello", session: sessionToken });
 		dirty = true;
 		lastPong = performance.now();
 		measurePing();
@@ -97,11 +108,17 @@
 	  ws.onmessage = event => {
 		let data;
 		try { data = JSON.parse(event.data); } catch { return; }
-		if (data.type === "pong" && data.sent === pingSent) {
+		if (data.type === "pong" && pendingPings.has(data.sent)) {
+		  pendingPings.delete(data.sent);
 		  const ms = Math.round(performance.now() - data.sent);
 		  lastPong = performance.now();
+		  status.textContent = controllerStatus;
 		  ping.textContent = "PING " + ms + " ms";
 		  send({ type: "latency", ms });
+		}
+		if (data.type === "status" && typeof data.text === "string") {
+		  controllerStatus = data.text;
+		  status.textContent = controllerStatus;
 		}
 	  };
 	  ws.onerror = () => {
@@ -110,6 +127,7 @@
 	  };
 	  ws.onclose = () => {
 		clearInterval(heartbeat);
+		pendingPings.clear();
 		ping.textContent = "PING —";
 		status.textContent = "Disconnected • reconnecting...";
 		retry = setTimeout(connect, 2000);

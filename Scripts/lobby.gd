@@ -27,6 +27,7 @@ func _ready():
 	LanServer.player_left.connect(_on_players_changed.unbind(1))
 	LanServer.latency_updated.connect(_on_latency_updated)
 	_on_players_changed()
+	LanServer.broadcast_status("Lobby • " + (LanServer.last_match_result if not LanServer.last_match_result.is_empty() else LanServer.last_lobby_reason))
 
 func _on_back_pressed():
 	LanServer.stop()
@@ -56,6 +57,8 @@ func _on_players_changed() -> void:
 	status_label.text = "Connect two phones (%d/2 ready)" % n
 	if not LanServer.last_match_result.is_empty():
 		status_label.text = LanServer.last_match_result + "\n" + status_label.text
+	if not LanServer.last_lobby_reason.is_empty():
+		status_label.text += "\n" + LanServer.last_lobby_reason
 	var connections: Array[String] = []
 	for id in LanServer.connected_player_ids():
 		var ping := "%d ms" % LanServer.player_latency[id] if LanServer.player_latency.has(id) else "measuring..."
@@ -69,6 +72,7 @@ func _on_start_pressed() -> void:
 	if ids.size() < 2:
 		return
 	LanServer.last_match_result = ""
+	LanServer.last_lobby_reason = ""
 	LanServer.match_player_ids.assign(ids.slice(0, 2))
 	get_tree().change_scene_to_file("res://main.tscn")
 

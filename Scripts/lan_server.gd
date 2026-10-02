@@ -12,7 +12,8 @@ const CONTROLLER_PAGE := "res://web/controller.html"
 const KEY_PATH := "user://tls.key"
 const CERT_PATH := "user://tls.crt"
 const MAX_REQUEST_BYTES := 8192
-const TIMEOUT_MS := 6000
+const TIMEOUT_MS := 6000 # Initial connection handshake only.
+@export_range(10.0, 120.0, 1.0) var heartbeat_timeout_seconds: float = 30.0
 
 class HttpClient:
 	var tcp: StreamPeerTCP
@@ -38,6 +39,10 @@ var _next_id := 1
 # The lobby assigns the left and right players before starting a match.
 var match_player_ids: Array[int] = []
 var last_match_result := ""
+var last_lobby_reason := ""
+var disconnect_reasons: Dictionary = {}
+var _session_ids: Dictionary = {}
+var _controller_status := "Connected • waiting in lobby"
 var player_latency: Dictionary = {}
 
 func _ready() -> void:
@@ -57,6 +62,10 @@ func start() -> Error:
 
 func stop() -> void:
 	last_match_result = ""
+	last_lobby_reason = ""
+	disconnect_reasons.clear()
+	_session_ids.clear()
+	_controller_status = "Connected • waiting in lobby"
 	match_player_ids.clear()
 	player_latency.clear()
 	for c in _http_clients:
@@ -67,6 +76,31 @@ func stop() -> void:
 	_players.clear()
 	_http_server.stop()
 	_ws_server.stop()
+
+func broadcast_status(message: String) -> void:
+	_controller_status = message
+	for p in _players:
+		if p.announced and p.ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+			p.ws.send_text(JSON.stringify({"type": "status", "text": message}))
+
+func _announce_player(p: Player, data: Dictionary) -> void:
+	if p.announced:
+		return
+	var session = data.get("session", "")
+	if session is String and not session.is_empty() and session.length() <= 128:
+		if _session_ids.has(session):
+			var previous_id: int = _session_ids[session]
+			for other in _players:
+				if other != p and other.announced and other.id == previous_id:
+					p.ws.close(1008, "Session already connected")
+					return
+			p.id = previous_id
+		else:
+			_session_ids[session] = p.id
+	p.announced = true
+	disconnect_reasons.erase(p.id)
+	player_joined.emit(p.id)
+	p.ws.send_text(JSON.stringify({"type": "status", "text": _controller_status}))
 
 func connected_player_ids() -> Array[int]:
 	var ids: Array[int] = []
@@ -196,15 +230,13 @@ func _poll_player(p: Player) -> bool:
 		p.tls.disconnect_from_stream()
 		return true
 	if state == WebSocketPeer.STATE_OPEN:
-		if not p.announced:
-			p.announced = true
-			p.last_seen_ms = Time.get_ticks_msec()
-			player_joined.emit(p.id)
 		while p.ws.get_available_packet_count() > 0:
 			p.last_seen_ms = Time.get_ticks_msec()  # any traffic counts as alive
 			var data = JSON.parse_string(p.ws.get_packet().get_string_from_utf8())
 			if data is Dictionary:
 				match data.get("type", ""):
+					"hello":
+						_announce_player(p, data)
 					"ping":
 						p.ws.send_text(JSON.stringify({"type": "pong", "sent": data.get("sent", 0)}))
 					"latency":
@@ -213,12 +245,17 @@ func _poll_player(p: Player) -> bool:
 							player_latency[p.id] = clampi(int(milliseconds), 0, 60000)
 							latency_updated.emit(p.id, player_latency[p.id])
 					_:
-						message_received.emit(p.id, data)
-		if Time.get_ticks_msec() - p.last_seen_ms < TIMEOUT_MS:
+						if p.announced:
+							message_received.emit(p.id, data)
+		var timeout_ms := int(heartbeat_timeout_seconds * 1000) if p.announced else TIMEOUT_MS
+		if Time.get_ticks_msec() - p.last_seen_ms < timeout_ms:
 			return false
-		p.ws.close()  # silent for too long, assume it's gone
+		disconnect_reasons[p.id] = "No phone messages for %d seconds." % heartbeat_timeout_seconds
+		p.ws.close(1001, "Heartbeat timed out")
 	# closing, closed, or timed out: this player is gone
 	if p.announced:
+		if not disconnect_reasons.has(p.id):
+			disconnect_reasons[p.id] = "Phone connection closed."
 		p.announced = false
 		player_latency.erase(p.id)
 		player_left.emit(p.id)

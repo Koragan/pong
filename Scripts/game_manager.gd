@@ -21,6 +21,9 @@ extends Node
 @onready var win_panel: Control = get_node(win_panel_path)
 @onready var win_label: Label = get_node(win_label_path)
 @onready var restart_button: Button = get_node(restart_button_path)
+@onready var connection_panel: Control = get_node("../UI/ConnectionPanel")
+@onready var connection_notice: Label = get_node("../UI/ConnectionPanel/CenterContainer/VBoxContainer/Notice")
+@onready var connection_back: Button = get_node("../UI/ConnectionPanel/CenterContainer/VBoxContainer/BackButton")
 @onready var background: ColorRect = get_node(background_path)
 
 var player_score = 0
@@ -28,11 +31,16 @@ var opponent_score = 0
 var game_over = false
 var remote_paddles: Dictionary = {}
 var returning_to_lobby := false
+var disconnected_player_ids: Array[int] = []
+var connection_paused := false
+var paused_before_disconnect := false
 
 func _ready():
 	ball.score_point.connect(_on_score_point)
 	restart_button.pressed.connect(_on_restart_pressed)
 	win_panel.visible = false
+	connection_panel.hide()
+	connection_back.pressed.connect(_on_connection_back_pressed)
 	update_score_label()
 	if LanServer.match_player_ids.size() == 2:
 		var paddles := [get_node("../PlayerPaddle"), get_node("../OpponentPaddle")]
@@ -47,10 +55,12 @@ func _ready():
 			remote_paddles[LanServer.match_player_ids[i]] = paddle
 		LanServer.message_received.connect(_on_remote_message)
 		LanServer.player_left.connect(_on_remote_player_left)
+		LanServer.player_joined.connect(_on_remote_player_joined)
 		LanServer.latency_updated.connect(_on_latency_updated)
 		_update_connection_label()
 		# Phone matches return to the lobby instead of restarting in place.
 		restart_button.hide()
+		_broadcast_match_status()
 
 func _on_remote_message(id: int, data: Dictionary) -> void:
 	if not remote_paddles.has(id):
@@ -62,11 +72,51 @@ func _on_remote_message(id: int, data: Dictionary) -> void:
 				var paddle = remote_paddles[id]
 				paddle.target_y = lerpf(paddle.min_y, paddle.max_y, clampf(float(y), 0.0, 1.0))
 		"lobby":
+			LanServer.last_lobby_reason = "%s phone requested the lobby." % _player_side(id)
 			_return_to_lobby()
 
+func _player_side(id: int) -> String:
+	return "Left" if LanServer.match_player_ids.find(id) == 0 else "Right"
+
 func _on_remote_player_left(id: int) -> void:
-	if remote_paddles.has(id):
-		_return_to_lobby()
+	if not remote_paddles.has(id) or game_over or returning_to_lobby:
+		return
+	if not disconnected_player_ids.has(id):
+		disconnected_player_ids.append(id)
+	if not connection_paused:
+		paused_before_disconnect = get_tree().paused
+		connection_paused = true
+	get_tree().paused = true
+	_update_disconnect_notice()
+
+func _update_disconnect_notice() -> void:
+	var notices: Array[String] = []
+	for id in disconnected_player_ids:
+		notices.append("%s phone disconnected. %s" % [_player_side(id), LanServer.disconnect_reasons.get(id, "Connection lost.")])
+	var message := "\n".join(notices)
+	connection_notice.text = "Match paused • %d - %d\n%s\nReconnect the same controller page to resume." % [player_score, opponent_score, message]
+	connection_panel.show()
+	LanServer.broadcast_status("Match paused • " + message)
+
+func _on_remote_player_joined(id: int) -> void:
+	if not disconnected_player_ids.has(id):
+		return
+	disconnected_player_ids.erase(id)
+	if disconnected_player_ids.is_empty():
+		connection_panel.hide()
+		connection_paused = false
+		get_tree().paused = paused_before_disconnect
+		_broadcast_match_status()
+	else:
+		_update_disconnect_notice()
+
+func _on_connection_back_pressed() -> void:
+	LanServer.last_lobby_reason = "Host returned to the lobby after a phone disconnected."
+	_return_to_lobby()
+
+func _broadcast_match_status() -> void:
+	if not remote_paddles.is_empty():
+		LanServer.broadcast_status("Match • %d - %d • first to %d" % [player_score, opponent_score, win_score])
 
 func _return_to_lobby() -> void:
 	if returning_to_lobby:
@@ -97,6 +147,8 @@ func _on_score_point(scorer: String):
 
 	update_score_label()
 	check_win()
+	if not game_over:
+		_broadcast_match_status()
 
 func update_score_label():
 	score_label.text = "%d   -   %d" % [player_score, opponent_score]
@@ -113,11 +165,13 @@ func end_game(winner: String):
 	if not remote_paddles.is_empty():
 		winner = "Left" if winner == "Player" else "Right"
 		LanServer.last_match_result = "%s wins! %d - %d" % [winner, player_score, opponent_score]
+		LanServer.last_lobby_reason = "Winning score of %d reached." % win_score
+		LanServer.broadcast_status(LanServer.last_match_result + " • returning to lobby")
 	ball.visible = false
 	background.z_index = 2
 	game_over = true
 	SFX.play_win()
-	win_label.text = "%s wins!" % winner
+	win_label.text = "%s wins!\n%d - %d" % [winner, player_score, opponent_score]
 	win_panel.visible = true
 	call_deferred("_finalize_end_game")
 

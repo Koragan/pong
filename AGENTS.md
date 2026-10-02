@@ -41,7 +41,7 @@ godot --headless --path . --script tests/game_physics_test.gd
 node tests/controller_controls_test.cjs
 ```
 
-Close other LAN hosts first. No coverage threshold is configured. Follow `tests/README.md` for real-phone checks, including tilt, certificates, and disconnection. HTTPS/WebSocket ports are 8443/8444; TLS files live under `user://`.
+Close other LAN hosts first. No coverage threshold is configured. Follow `tests/README.md` for real-phone checks, including tilt, certificates, and reconnection. HTTPS/WebSocket ports are 8443/8444; TLS files live under `user://`.
 
 ## Commit & Pull Request Guidelines
 
@@ -49,6 +49,6 @@ Use descriptive subjects, such as â€œAdd main menu and placeholder lobby scene.â
 
 ## Current Project Status
 
-Two phones control host-started matches through drag, calibrated tilt, or Up/Down buttons. The CRT-styled controller and PC display round-trip ping. Paddle collisions match their visuals; the ball uses continuous collision detection. Phone matches return to the lobby with the final result; single-player retains its restart screen.
+Two phones control host-started matches through drag, calibrated tilt, or Up/Down buttons. The CRT-styled controller and PC display round-trip ping. Paddle collisions match their visuals; the ball uses continuous collision detection. Phone matches return to the lobby with the final result and reason. Disconnects pause the match with a visible notice; the same controller session can reconnect and resume without losing scores. Single-player retains its restart screen.
 
 In `main.tscn`, select `GameManager` and adjust `Win Score` (default 5; supports 100+) and `Lobby Return Delay` (default 2 seconds). Device tilt and certificate onboarding need validation.

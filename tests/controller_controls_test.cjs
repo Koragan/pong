@@ -7,12 +7,13 @@ function element(id) { return elements[id] ||= { hidden:false, style:{}, dataset
 const modes = ['touch','tilt','buttons'].map(mode => Object.assign(element(mode), {dataset:{mode}}));
 const buttons = [-1,1].map(axis => Object.assign(element('axis'+axis), {dataset:{axis:String(axis)}}));
 const handlers = {}, frames = [], packets = [];
-class Socket { static OPEN=1; constructor(){this.readyState=1; Socket.instance=this} send(s){packets.push(JSON.parse(s))} close(){} }
+let now = 100, heartbeatCallback, closeCount = 0;
+class Socket { static OPEN=1; constructor(){this.readyState=1; Socket.instance=this} send(s){packets.push(JSON.parse(s))} close(){closeCount++} }
 const window = { addEventListener(type,callback){handlers[type]=callback}, DeviceOrientationEvent:{}, orientation:0 };
-const context = { DeviceOrientationEvent:window.DeviceOrientationEvent, document:{getElementById:element, querySelectorAll(){return modes}}, window,
+const context = { sessionStorage:{getItem(){return null},setItem(){}}, crypto:{randomUUID(){return "controller-test-session"}}, DeviceOrientationEvent:window.DeviceOrientationEvent, document:{getElementById:element, querySelectorAll(){return modes}}, window,
   screen:{orientation:{angle:0}}, location:{hostname:'localhost'}, WebSocket:Socket,
-  performance:{now(){return 100}}, requestAnimationFrame(fn){frames.push(fn)},
-  setTimeout(){},clearTimeout(){},setInterval(){},clearInterval(){}, console };
+  performance:{now(){return now}}, requestAnimationFrame(fn){frames.push(fn)},
+  setTimeout(){},clearTimeout(){},setInterval(fn){heartbeatCallback=fn},clearInterval(){}, console };
 vm.createContext(context); vm.runInContext(source,context); Socket.instance.onopen();
 const tick = time => frames.shift()(time);
 (async()=>{
@@ -26,7 +27,14 @@ const tick = time => frames.shift()(time);
   element('calibrate').onclick();tick(214);assert.equal(packets.at(-1).y,.5);
   Socket.instance.onmessage({data:JSON.stringify({type:'pong',sent:100})});
   assert.equal(element('ping').textContent,'PING 0 ms');assert.equal(packets.at(-1).type,'latency');
+  assert.equal(packets.find(p => p.type === 'hello').session, 'controller-test-session');
+  now=2100; heartbeatCallback(); now=4100; heartbeatCallback();
+  now=5100; Socket.instance.onmessage({data:JSON.stringify({type:'pong',sent:2100})});
+  assert.equal(element('ping').textContent,'PING 3000 ms');
+  now=12000; heartbeatCallback(); assert.equal(closeCount,0);
+  Socket.instance.onmessage({data:JSON.stringify({type:'status',text:'Match paused • Right phone disconnected'})});
+  assert(element('status').textContent.includes('Match paused'));
   window.DeviceOrientationEvent.requestPermission=async()=> 'denied';await modes[1].onclick();
   assert(element('hint').textContent.includes('denied'));
-  console.log('PASS: drag, held buttons, pointer cancellation, tilt, calibration, permission denial, and ping UI');
+  console.log('PASS: drag, held buttons, pointer cancellation, tilt, calibration, permission denial, ping UI, delayed pong, stale-ping tolerance, stable session, and match status');
 })().catch(e=>{console.error(e);process.exitCode=1});

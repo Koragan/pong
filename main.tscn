@@ -280,4 +280,33 @@ offset_bottom = 32.0
 mouse_filter = 2
 theme_override_font_sizes/font_size = 14
 
+[node name="ConnectionPanel" type="ColorRect" parent="UI"]
+process_mode = 3
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.95)
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ConnectionPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/ConnectionPanel/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Notice" type="Label" parent="UI/ConnectionPanel/CenterContainer/VBoxContainer"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="UI/ConnectionPanel/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Return to lobby"
+
 [connection signal="mouse_entered" from="UI/WinPanel/RestartButton" to="GameManager" method="_on_restart_button_mouse_entered"]
