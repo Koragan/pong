@@ -30,6 +30,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	var manager = current_scene.get_node("GameManager")
+	await manager.countdown.completed
 	var ball: RigidBody2D = manager.ball
 	var hits: Array = []
 	ball.paddle_hit.connect(func(name): hits.append(name))
@@ -64,6 +65,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	manager = current_scene.get_node("GameManager")
+	await manager.countdown.completed
 	manager.ball.freeze = true
 	manager.win_score = 100
 	manager.lobby_return_delay = 0.05
@@ -78,6 +80,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	manager = current_scene.get_node("GameManager")
+	await manager.countdown.completed
 	manager.ball.freeze = true
 	for i in range(5):
 		manager._on_score_point("player")

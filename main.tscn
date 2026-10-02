@@ -11,6 +11,8 @@
 [ext_resource type="Texture2D" uid="uid://b2gdfkwbbcu4h" path="res://Koragan.png" id="8_kek77"]
 [ext_resource type="Script" uid="uid://b7xuxpyl0q71q" path="res://Scripts/trajectory_predictor.gd" id="9_kek77"]
 
+[ext_resource type="Script" path="res://Scripts/match_countdown.gd" id="10_countdown"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sp1m1"]
 size = Vector2(800, 20)
 
@@ -281,6 +283,7 @@ mouse_filter = 2
 theme_override_font_sizes/font_size = 14
 
 [node name="ConnectionPanel" type="ColorRect" parent="UI"]
+z_index = 20
 process_mode = 3
 visible = false
 anchors_preset = 15
@@ -308,5 +311,31 @@ horizontal_alignment = 1
 [node name="BackButton" type="Button" parent="UI/ConnectionPanel/CenterContainer/VBoxContainer"]
 layout_mode = 2
 text = "Return to lobby"
+
+[node name="Countdown" type="Control" parent="UI"]
+z_index = 10
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_countdown")
+
+[node name="Number" type="Label" parent="UI/Countdown"]
+mouse_filter = 2
+theme_override_colors/font_shadow_color = Color(1, 0, 0.067, 0.5)
+theme_override_constants/shadow_offset_x = 4
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 128
+text = "3"
+horizontal_alignment = 1
+
+[node name="Caption" type="Label" parent="UI/Countdown"]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.851, 1, 0.898, 1)
+theme_override_font_sizes/font_size = 16
+text = "GET READY"
+horizontal_alignment = 1
 
 [connection signal="mouse_entered" from="UI/WinPanel/RestartButton" to="GameManager" method="_on_restart_button_mouse_entered"]

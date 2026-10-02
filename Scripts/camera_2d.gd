@@ -73,7 +73,7 @@ func _is_relevant(prediction: Dictionary) -> bool:
 	return player_match_point or opponent_match_point
 
 func _check_start_condition():
-	if ball.is_recovering:
+	if ball.is_recovering or game_manager.match_starting:
 		return
 	var prediction = predictor.predict_scoring_wall_hit()
 	if not _is_relevant(prediction):

@@ -38,6 +38,7 @@ Run:
 ```sh
 godot --headless --path . --script tests/lan_match_test.gd
 godot --headless --path . --script tests/game_physics_test.gd
+godot --headless --path . --script tests/countdown_test.gd
 node tests/controller_controls_test.cjs
 ```
 
@@ -49,6 +50,6 @@ Use descriptive subjects, such as “Add main menu and placeholder lobby scene.�
 
 ## Current Project Status
 
-Two phones control host-started matches through drag, calibrated tilt, or Up/Down buttons. The CRT-styled controller and PC display round-trip ping. Paddle collisions match their visuals; the ball uses continuous collision detection. Phone matches return to the lobby with the final result and reason. Disconnects pause the match with a visible notice; the same controller session can reconnect and resume without losing scores. Single-player retains its restart screen.
+A CRT-styled, shaking 3–2–1–GO countdown gates match starts and restarts; the ball stays frozen until GO, and disconnections pause the countdown. Two phones control host-started matches through drag, calibrated tilt, or Up/Down buttons. The CRT-styled controller and PC display round-trip ping. Paddle collisions match their visuals; the ball uses continuous collision detection. Phone matches return to the lobby with the final result and reason. Disconnects pause the match with a visible notice; the same controller session can reconnect and resume without losing scores. Single-player retains its restart screen.
 
 In `main.tscn`, select `GameManager` and adjust `Win Score` (default 5; supports 100+) and `Lobby Return Delay` (default 2 seconds). Device tilt and certificate onboarding need validation.

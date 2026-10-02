@@ -14,6 +14,7 @@ extends Node
 @export var crt_overlay_path: NodePath
 @export var camera_path: NodePath
 
+@onready var countdown: Control = get_node("../UI/Countdown")
 @onready var camera: Camera2D = get_node(camera_path)
 @onready var crt_mat: ShaderMaterial = get_node(crt_overlay_path).material
 @onready var ball: RigidBody2D = get_node(ball_path)
@@ -29,6 +30,7 @@ extends Node
 var player_score = 0
 var opponent_score = 0
 var game_over = false
+var match_starting := true
 var remote_paddles: Dictionary = {}
 var returning_to_lobby := false
 var disconnected_player_ids: Array[int] = []
@@ -60,6 +62,32 @@ func _ready():
 		_update_connection_label()
 		# Phone matches return to the lobby instead of restarting in place.
 		restart_button.hide()
+		_broadcast_match_status()
+	_begin_countdown()
+
+func _begin_countdown() -> void:
+	match_starting = true
+	ball.freeze = true
+	if not countdown.completed.is_connected(_on_countdown_completed):
+		countdown.completed.connect(_on_countdown_completed)
+		countdown.beat_started.connect(_on_countdown_beat)
+		countdown.cleared.connect(_on_countdown_cleared)
+	countdown.call_deferred("start")
+
+func _on_countdown_beat(value: String) -> void:
+	var index := 3 if value == "GO" else 3 - int(value)
+	camera.add_trauma(0.25 + index * 0.12)
+	SFX.play_countdown(index)
+	if not remote_paddles.is_empty():
+		LanServer.broadcast_status(value + " • first to %d" % win_score)
+
+func _on_countdown_completed() -> void:
+	match_starting = false
+	ball.reset_ball(true)
+	ball.freeze = false
+
+func _on_countdown_cleared() -> void:
+	if not game_over and not connection_paused and not returning_to_lobby:
 		_broadcast_match_status()
 
 func _on_remote_message(id: int, data: Dictionary) -> void:
@@ -106,7 +134,10 @@ func _on_remote_player_joined(id: int) -> void:
 		connection_panel.hide()
 		connection_paused = false
 		get_tree().paused = paused_before_disconnect
-		_broadcast_match_status()
+		if match_starting:
+			LanServer.broadcast_status("Get ready • " + countdown.number.text)
+		else:
+			_broadcast_match_status()
 	else:
 		_update_disconnect_notice()
 
@@ -137,7 +168,7 @@ func _process(_delta):
 	crt_mat.set_shader_parameter("tint", base_tint.lerp(hot_tint, speed_t))
 
 func _on_score_point(scorer: String):
-	if game_over:
+	if game_over or match_starting:
 		return
 
 	if scorer == "player":
@@ -162,6 +193,7 @@ func check_win():
 func end_game(winner: String):
 	if game_over:
 		return
+	countdown.cancel()
 	if not remote_paddles.is_empty():
 		winner = "Left" if winner == "Player" else "Right"
 		LanServer.last_match_result = "%s wins! %d - %d" % [winner, player_score, opponent_score]
@@ -196,8 +228,8 @@ func _on_restart_pressed():
 	game_over = false
 	win_panel.visible = false
 	update_score_label()
-	ball.reset_ball(true)          # was: ball.reset_ball()
 	get_tree().paused = false
+	_begin_countdown()
 
 func _on_restart_button_mouse_entered() -> void:
 	SFX.play_paddle_hit()

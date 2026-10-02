@@ -12,6 +12,8 @@ func _ready():
 	LanServer.match_player_ids.clear()
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	# Keep the previous result visible even if LAN startup fails.
+	_on_players_changed()
 	var ip := _find_lan_ip()
 	if ip == "":
 		address_label.text = "No LAN connection found"

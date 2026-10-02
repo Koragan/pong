@@ -53,6 +53,8 @@ func _ready():
 	print(shader_effect_value)
 
 func _physics_process(delta):
+	if freeze:
+		return
 	if linear_velocity.length() > max_speed:
 		linear_velocity = linear_velocity.normalized() * max_speed
 

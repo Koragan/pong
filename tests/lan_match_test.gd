@@ -53,6 +53,7 @@ func _run() -> void:
 	change_scene_to_file("res://main.tscn")
 	await pump(clients)
 	var manager = current_scene.get_node("GameManager")
+	await pump(clients, 330)
 	manager.ball.freeze = true
 	check(manager.remote_paddles.size() == 2, "two remote paddles assigned")
 	clients[0].send_text('{"type":"move","y":0}')

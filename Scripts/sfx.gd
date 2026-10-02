@@ -60,3 +60,7 @@ func play_score():
 func play_win():
 	_player_b.stream = win_stream
 	_player_b.play()
+
+func play_countdown(beat: int) -> void:
+	_player_b.stream = generate_tone(440.0 + beat * 110.0, 0.18 if beat < 3 else 0.3, "square", 0.2)
+	_player_b.play()
