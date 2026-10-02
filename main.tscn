@@ -143,6 +143,7 @@ shape = SubResource("RectangleShape2D_rqpie")
 [node name="PlayerPaddle" type="CharacterBody2D" parent="." unique_id=92150746]
 position = Vector2(85, 231)
 script = ExtResource("2_h2yge")
+control_source = 2
 
 [node name="ColorRect" type="ColorRect" parent="PlayerPaddle" unique_id=808500453]
 offset_left = -8.0
