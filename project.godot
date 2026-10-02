@@ -18,6 +18,7 @@ config/icon="uid://ile4fyh4ntxm"
 [autoload]
 
 SFX="*uid://elwcvt331dv0"
+LanServer="*uid://ck6x03mimu5br"
 
 [display]
 
