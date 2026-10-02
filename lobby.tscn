@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dtdpmo8yxn4mr"]
+
+[node name="lobby" type="Control" unique_id=2030036586]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="." unique_id=2015557985]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Lobby"

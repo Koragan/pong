@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Pong"
-run/main_scene="uid://b821myv7hqira"
+run/main_scene="uid://s7wgnbiqw150"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="uid://ile4fyh4ntxm"
 

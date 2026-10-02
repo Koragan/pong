@@ -59,6 +59,7 @@ win_label_path = NodePath("../UI/WinPanel/WinLabel")
 restart_button_path = NodePath("../UI/WinPanel/RestartButton")
 background_path = NodePath("../ColorRect")
 crt_overlay_path = NodePath("../PostFX/CRTOverlay")
+camera_path = NodePath("../Camera2D")
 
 [node name="Walls" type="Node2D" parent="." unique_id=230215125]
 position = Vector2(445, 31)
