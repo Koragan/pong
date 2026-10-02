@@ -43,6 +43,11 @@ layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="StartButton" type="Button" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+disabled = true
+text = "Start Match"
+
 [node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1477253342]
 layout_mode = 2
 text = "Back"

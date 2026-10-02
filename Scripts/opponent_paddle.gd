@@ -17,6 +17,7 @@ var post_hit_pause_timer: float = 0.0
 
 @onready var ball: RigidBody2D = get_node(ball_path)
 
+var remote_control := false
 var target_y: float = 0.0
 var reaction_timer: float = 0.0
 var was_reacting: bool = false
@@ -26,6 +27,8 @@ func _ready():
 	ball.paddle_hit.connect(_on_paddle_hit)
 
 func _on_paddle_hit(paddle_name: String):
+	if remote_control:
+		return
 	if paddle_name == "PlayerPaddle":
 		reaction_timer = lerp(reaction_delay_range.x, reaction_delay_range.y, skill_level)
 		was_reacting = true
@@ -34,6 +37,10 @@ func _on_paddle_hit(paddle_name: String):
 
 
 func _physics_process(delta):
+	if remote_control:
+		target_y = clampf(target_y, min_y, max_y)
+		global_position.y = move_toward(global_position.y, target_y, 900.0 * delta)
+		return
 	if post_hit_pause_timer > 0.0:
 		post_hit_pause_timer -= delta
 		return   # fully frozen this frame — no movement, no tracking update at all

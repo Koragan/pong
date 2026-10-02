@@ -3,6 +3,7 @@ extends Node
 signal player_joined(id: int)
 signal player_left(id: int)
 signal message_received(id: int, data: Dictionary)
+signal latency_updated(id: int, milliseconds: int)
 
 const PORT := 8443      # HTTPS: serves the controller page
 const WS_PORT := 8444   # secure WebSocket: live data from phones
@@ -23,6 +24,7 @@ class Player:
 	var tcp: StreamPeerTCP
 	var tls := StreamPeerTLS.new()
 	var ws := WebSocketPeer.new()
+	var ws_started := false
 	var announced := false
 	var last_seen_ms := 0
 
@@ -32,6 +34,14 @@ var _tls_options: TLSOptions
 var _http_clients: Array[HttpClient] = []
 var _players: Array[Player] = []
 var _next_id := 1
+
+# The lobby assigns the left and right players before starting a match.
+var match_player_ids: Array[int] = []
+var last_match_result := ""
+var player_latency: Dictionary = {}
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 func start() -> Error:
 	if _http_server.is_listening():
@@ -46,6 +56,9 @@ func start() -> Error:
 	return err
 
 func stop() -> void:
+	last_match_result = ""
+	match_player_ids.clear()
+	player_latency.clear()
 	for c in _http_clients:
 		c.tls.disconnect_from_stream()
 	_http_clients.clear()
@@ -54,6 +67,13 @@ func stop() -> void:
 	_players.clear()
 	_http_server.stop()
 	_ws_server.stop()
+
+func connected_player_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for p in _players:
+		if p.announced:
+			ids.append(p.id)
+	return ids
 
 func player_count() -> int:
 	var n := 0
@@ -145,7 +165,8 @@ func _accept_websockets() -> void:
 		_next_id += 1
 		p.tcp = _ws_server.take_connection()
 		# TLS first, then hand the encrypted stream to the WebSocket, which does its own handshake
-		if p.tls.accept_stream(p.tcp, _tls_options) == OK and p.ws.accept_stream(p.tls) == OK:
+		p.last_seen_ms = Time.get_ticks_msec()
+		if p.tls.accept_stream(p.tcp, _tls_options) == OK:
 			_players.append(p)
 		else:
 			p.tcp.disconnect_from_host()
@@ -153,10 +174,27 @@ func _accept_websockets() -> void:
 # Returns true once this player is gone and can be dropped.
 
 func _poll_player(p: Player) -> bool:
+	if not p.ws_started:
+		p.tls.poll()
+		if Time.get_ticks_msec() - p.last_seen_ms >= TIMEOUT_MS:
+			p.tls.disconnect_from_stream()
+			return true
+		match p.tls.get_status():
+			StreamPeerTLS.STATUS_HANDSHAKING:
+				return false
+			StreamPeerTLS.STATUS_CONNECTED:
+				if p.ws.accept_stream(p.tls) != OK:
+					return true
+				p.ws_started = true
+			_:
+				return true
 	p.ws.poll()
 	var state := p.ws.get_ready_state()
 	if state == WebSocketPeer.STATE_CONNECTING:
-		return false
+		if Time.get_ticks_msec() - p.last_seen_ms < TIMEOUT_MS:
+			return false
+		p.tls.disconnect_from_stream()
+		return true
 	if state == WebSocketPeer.STATE_OPEN:
 		if not p.announced:
 			p.announced = true
@@ -165,12 +203,23 @@ func _poll_player(p: Player) -> bool:
 		while p.ws.get_available_packet_count() > 0:
 			p.last_seen_ms = Time.get_ticks_msec()  # any traffic counts as alive
 			var data = JSON.parse_string(p.ws.get_packet().get_string_from_utf8())
-			if data is Dictionary and data.get("type", "") != "ping":
-				message_received.emit(p.id, data)
+			if data is Dictionary:
+				match data.get("type", ""):
+					"ping":
+						p.ws.send_text(JSON.stringify({"type": "pong", "sent": data.get("sent", 0)}))
+					"latency":
+						var milliseconds = data.get("ms")
+						if (milliseconds is int or milliseconds is float) and is_finite(float(milliseconds)):
+							player_latency[p.id] = clampi(int(milliseconds), 0, 60000)
+							latency_updated.emit(p.id, player_latency[p.id])
+					_:
+						message_received.emit(p.id, data)
 		if Time.get_ticks_msec() - p.last_seen_ms < TIMEOUT_MS:
 			return false
 		p.ws.close()  # silent for too long, assume it's gone
 	# closing, closed, or timed out: this player is gone
 	if p.announced:
+		p.announced = false
+		player_latency.erase(p.id)
 		player_left.emit(p.id)
 	return true

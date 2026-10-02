@@ -1,34 +1,207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080808">
   <title>Pong Controller</title>
   <style>
-	body { margin: 0; height: 100vh; display: grid; place-items: center; text-align: center;
-		   background: #111; color: #eee; font-family: sans-serif; }
-	a { color: #8cf; }
+	:root { color-scheme: dark; --ink: #d9ffe5; --red: #ff0011; }
+	* { box-sizing: border-box; }
+	body { margin: 0; height: 100dvh; min-height: 440px; padding: 16px;
+	  display: flex; flex-direction: column; gap: 12px; background: #080808;
+	  color: var(--ink); font-family: monospace; text-align: center; }
+	body::after { content: ""; position: fixed; inset: 0; pointer-events: none;
+	  background: repeating-linear-gradient(transparent 0 3px, #0003 3px 4px);
+	  box-shadow: inset 0 0 90px #0009; }
+	header { display: flex; align-items: center; justify-content: space-between; }
+	h1 { margin: 0; font-size: 32px; letter-spacing: 8px; color: var(--red);
+	  text-shadow: 0 0 16px #ff001177; }
+	#ping { padding: 8px; border: 1px solid #d9ffe544; }
+	#status, #hint { margin: 0; line-height: 1.5; }
+	a { color: var(--ink); }
+	nav { display: flex; gap: 8px; }
+	button { font: inherit; color: inherit; background: #111; border: 1px solid #d9ffe555;
+	  min-height: 48px; padding: 10px; cursor: pointer; }
+	nav button { flex: 1; }
+	button[aria-pressed="true"], button:active { color: #080808; background: var(--ink); }
+	button:focus-visible, a:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+	#pad { flex: 1; min-height: 120px; position: relative; overflow: hidden;
+	  border: 2px solid var(--red); touch-action: none; user-select: none;
+	  background: linear-gradient(90deg, transparent 49.7%, #d9ffe533 50%, transparent 50.3%); }
+	#paddle { position: absolute; width: 14px; height: 54px; left: calc(50% - 7px);
+	  top: 50%; transform: translateY(-50%); background: var(--ink); box-shadow: 0 0 18px #d9ffe555; }
+	#arrows { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+	#arrows button { flex: 1; font-size: 28px; touch-action: none; user-select: none; }
+	[hidden] { display: none !important; }
+	footer { display: flex; gap: 8px; }
+	footer button { flex: 1; }
   </style>
 </head>
 <body>
-  <div>
-	<h1 id="status">Connecting...</h1>
-	<a id="cert-link" style="display:none">Can't reach the game. Tap here to trust its certificate, then come back and reload.</a>
-  </div>
+  <header><h1>PONG</h1><span id="ping" aria-label="Round-trip latency">PING —</span></header>
+  <p id="status" role="status">Connecting...</p>
+  <a id="cert-link" hidden>Trust the game certificate, then return and reload.</a>
+  <nav aria-label="Control mode">
+	<button data-mode="touch" aria-pressed="true">DRAG</button>
+	<button data-mode="tilt" aria-pressed="false">TILT</button>
+	<button data-mode="buttons" aria-pressed="false">BUTTONS</button>
+  </nav>
+  <p id="hint">Drag up and down to move your paddle.</p>
+  <div id="pad" aria-label="Paddle touch area"><div id="paddle"></div></div>
+  <div id="arrows" hidden><button data-axis="-1" aria-label="Move up">▲ UP</button><button data-axis="1" aria-label="Move down">▼ DOWN</button></div>
+  <footer><button id="calibrate" hidden>CENTER TILT</button><button id="lobby">RETURN TO LOBBY</button></footer>
   <script>
-    const status = document.getElementById("status");
-    const certLink = document.getElementById("cert-link");
-    const ws = new WebSocket("wss://" + location.hostname + ":8444");
-    let heartbeat;
-    ws.onopen = () => {
-      status.textContent = "Connected to Pong";
-      ws.send(JSON.stringify({ type: "hello" }));
-      heartbeat = setInterval(() => ws.send(JSON.stringify({ type: "ping" })), 2000);
-    };
-    ws.onclose = () => {
-      clearInterval(heartbeat);
-      status.textContent = "Disconnected";
-    };
+	const status = document.getElementById("status");
+	const ping = document.getElementById("ping");
+	const certLink = document.getElementById("cert-link");
+	const pad = document.getElementById("pad");
+	const paddle = document.getElementById("paddle");
+	const arrows = document.getElementById("arrows");
+	const hint = document.getElementById("hint");
+	const calibrate = document.getElementById("calibrate");
+	certLink.href = "https://" + location.hostname + ":8444/";
+	let heartbeat, retry, ws;
+	let mode = "touch", activePointer = null, axis = 0, y = 0.5, dirty = false;
+	let tiltCenter = null, lastTilt = null, orientationListening = false;
+	let pingSent = null, lastPong = 0;
+	function send(data) {
+	  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
+	}
+	function setY(value) {
+	  y = Math.max(0, Math.min(1, value));
+	  dirty = true;
+	  paddle.style.top = (27 + y * Math.max(0, pad.clientHeight - 54)) + "px";
+	}
+	function measurePing() {
+	  if (lastPong && performance.now() - lastPong > 6000) {
+		ping.textContent = "PING —";
+		ws.close();
+		return;
+	  }
+	  pingSent = performance.now();
+	  send({ type: "ping", sent: pingSent });
+	}
+	function connect() {
+	  clearTimeout(retry);
+	  ws = new WebSocket("wss://" + location.hostname + ":8444");
+	  ws.onopen = () => {
+		status.textContent = "Connected • start the match on the PC";
+		certLink.hidden = true;
+		send({ type: "hello" });
+		dirty = true;
+		lastPong = performance.now();
+		measurePing();
+		heartbeat = setInterval(measurePing, 2000);
+	  };
+	  ws.onmessage = event => {
+		let data;
+		try { data = JSON.parse(event.data); } catch { return; }
+		if (data.type === "pong" && data.sent === pingSent) {
+		  const ms = Math.round(performance.now() - data.sent);
+		  lastPong = performance.now();
+		  ping.textContent = "PING " + ms + " ms";
+		  send({ type: "latency", ms });
+		}
+	  };
+	  ws.onerror = () => {
+		status.textContent = "Connection failed";
+		certLink.hidden = false;
+	  };
+	  ws.onclose = () => {
+		clearInterval(heartbeat);
+		ping.textContent = "PING —";
+		status.textContent = "Disconnected • reconnecting...";
+		retry = setTimeout(connect, 2000);
+	  };
+	}
+	function applyMode(value) {
+	  mode = value;
+	  axis = 0;
+	  activePointer = null;
+	  pad.hidden = mode === "buttons";
+	  arrows.hidden = mode !== "buttons";
+	  calibrate.hidden = mode !== "tilt";
+	  hint.textContent = { touch: "Drag up and down to move your paddle.",
+		tilt: "Tilt forward / back. Center tilt in your comfortable position.",
+		buttons: "Hold UP or DOWN to move your paddle." }[mode];
+	  document.querySelectorAll("[data-mode]").forEach(button => {
+		button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+	  });
+	  setY(y);
+	}
+	async function chooseMode(value) {
+	  if (value === "tilt") {
+		try {
+		  if (!window.DeviceOrientationEvent) throw new Error("unavailable");
+		  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+			if (await DeviceOrientationEvent.requestPermission() !== "granted") throw new Error("denied");
+		  }
+		  if (!orientationListening) {
+			window.addEventListener("deviceorientation", event => {
+			  const angle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+			  const tilt = Math.abs(angle) === 90 ? event.gamma * (angle > 0 ? -1 : 1) : event.beta;
+			  if (!Number.isFinite(tilt)) return;
+			  lastTilt = tilt;
+			  if (mode !== "tilt") return;
+			  if (tiltCenter === null) tiltCenter = tilt;
+			  setY(0.5 + (tilt - tiltCenter) / 60);
+			});
+			orientationListening = true;
+		  }
+		  tiltCenter = null;
+		} catch {
+		  hint.textContent = "Tilt unavailable or permission denied. Use DRAG or BUTTONS.";
+		  return;
+		}
+	  }
+	  applyMode(value);
+	}
+	document.querySelectorAll("[data-mode]").forEach(button => {
+	  button.onclick = () => chooseMode(button.dataset.mode);
+	});
+	calibrate.onclick = () => { tiltCenter = lastTilt; setY(0.5); };
+	function move(event) {
+	  const bounds = pad.getBoundingClientRect();
+	  setY((event.clientY - bounds.top - 27) / Math.max(1, bounds.height - 54));
+	}
+	pad.onpointerdown = event => {
+	  if (mode !== "touch" || activePointer !== null) return;
+	  activePointer = event.pointerId;
+	  pad.setPointerCapture(activePointer);
+	  move(event);
+	};
+	pad.onpointermove = event => {
+	  if (mode === "touch" && event.pointerId === activePointer) move(event);
+	};
+	pad.onpointerup = pad.onpointercancel = pad.onlostpointercapture = event => {
+	  if (event.pointerId === activePointer) activePointer = null;
+	};
+	arrows.querySelectorAll("button").forEach(button => {
+	  button.onpointerdown = event => {
+		if (activePointer !== null) return;
+		activePointer = event.pointerId;
+		axis = Number(button.dataset.axis);
+		button.setPointerCapture(activePointer);
+	  };
+	  button.onpointerup = button.onpointercancel = button.onlostpointercapture = event => {
+		if (event.pointerId === activePointer) { activePointer = null; axis = 0; }
+	  };
+	});
+	window.addEventListener("blur", () => { axis = 0; activePointer = null; });
+	window.addEventListener("orientationchange", () => { tiltCenter = null; });
+	window.addEventListener("resize", () => setY(y));
+	let previousFrame = performance.now();
+	function flush(now) {
+	  const delta = Math.min((now - previousFrame) / 1000, 0.05);
+	  previousFrame = now;
+	  if (mode === "buttons" && axis) setY(y + axis * delta * 1.5);
+	  if (dirty) { send({ type: "move", y }); dirty = false; }
+	  requestAnimationFrame(flush);
+	}
+	document.getElementById("lobby").onclick = () => send({ type: "lobby" });
+	connect();
+	requestAnimationFrame(flush);
   </script>
 </body>
 </html>
