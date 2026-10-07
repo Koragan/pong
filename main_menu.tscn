@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://s7wgnbiqw150"]
 
 [ext_resource type="Script" uid="uid://bm8agd1c7ywhm" path="res://Scripts/main_menu.gd" id="1_06t4h"]
+[ext_resource type="PackedScene" uid="uid://d1tb6t84iuwg0" path="res://post_fx.tscn" id="2_7vrkn"]
 
 [node name="MainMenu" type="Control" unique_id=1033538195]
 layout_mode = 3
@@ -12,6 +13,16 @@ grow_vertical = 2
 script = ExtResource("1_06t4h")
 game_scene = "uid://b821myv7hqira"
 lobby_scene = "uid://dtdpmo8yxn4mr"
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=822939575]
+custom_minimum_size = Vector2(1.165, 1.52)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=1936098542]
 layout_mode = 1
@@ -27,11 +38,15 @@ layout_mode = 2
 [node name="Label" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1067629792]
 layout_mode = 2
 text = "Pong"
+horizontal_alignment = 1
 
 [node name="SinglePlayerButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1106904086]
 layout_mode = 2
+theme_override_constants/outline_size = 0
 text = "Single Player"
 
 [node name="PhoneButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1840911090]
 layout_mode = 2
 text = "Phone Multiplayer"
+
+[node name="PostFX" parent="." unique_id=1695684900 instance=ExtResource("2_7vrkn")]
