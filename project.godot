@@ -17,6 +17,7 @@ config/icon="uid://ile4fyh4ntxm"
 
 [autoload]
 
+GameSettings="*res://Scripts/game_settings.gd"
 SFX="*uid://elwcvt331dv0"
 LanServer="*uid://ck6x03mimu5br"
 

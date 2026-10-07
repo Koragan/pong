@@ -1,6 +1,6 @@
 extends Node
 
-## Points required to win. Change this on GameManager in the Inspector.
+## Points required to win; the Options menu supplies the runtime value.
 @export_range(1, 100, 1, "or_greater") var win_score: int = 5
 @export_range(0.0, 10.0, 0.1, "or_greater") var lobby_return_delay: float = 2.0
 @export var max_speed_for_tint: float = 500.0
@@ -35,9 +35,16 @@ var remote_paddles: Dictionary = {}
 var returning_to_lobby := false
 var disconnected_player_ids: Array[int] = []
 var connection_paused := false
-var paused_before_disconnect := false
+var manual_paused := false
+var menus: CanvasLayer
 
 func _ready():
+	menus = preload("res://Scripts/menu_overlay.gd").new()
+	add_child(menus)
+	menus.resume_requested.connect(_resume_match)
+	menus.leave_requested.connect(_leave_match)
+	GameSettings.changed.connect(_apply_options)
+	_apply_options()
 	ball.score_point.connect(_on_score_point)
 	restart_button.pressed.connect(_on_restart_pressed)
 	win_panel.visible = false
@@ -112,7 +119,6 @@ func _on_remote_player_left(id: int) -> void:
 	if not disconnected_player_ids.has(id):
 		disconnected_player_ids.append(id)
 	if not connection_paused:
-		paused_before_disconnect = get_tree().paused
 		connection_paused = true
 	get_tree().paused = true
 	_update_disconnect_notice()
@@ -133,7 +139,10 @@ func _on_remote_player_joined(id: int) -> void:
 	if disconnected_player_ids.is_empty():
 		connection_panel.hide()
 		connection_paused = false
-		get_tree().paused = paused_before_disconnect
+		get_tree().paused = manual_paused
+		if manual_paused:
+			_broadcast_match_status()
+			return
 		if match_starting:
 			LanServer.broadcast_status("Get ready • " + countdown.number.text)
 		else:
@@ -147,7 +156,7 @@ func _on_connection_back_pressed() -> void:
 
 func _broadcast_match_status() -> void:
 	if not remote_paddles.is_empty():
-		LanServer.broadcast_status("Match • %d - %d • first to %d" % [player_score, opponent_score, win_score])
+		LanServer.broadcast_status(("Host paused • " if manual_paused else "Match • ") + "%d - %d • first to %d" % [player_score, opponent_score, win_score])
 
 func _return_to_lobby() -> void:
 	if returning_to_lobby:
@@ -168,7 +177,7 @@ func _process(_delta):
 	crt_mat.set_shader_parameter("tint", base_tint.lerp(hot_tint, speed_t))
 
 func _on_score_point(scorer: String):
-	if game_over or match_starting:
+	if game_over or match_starting or get_tree().paused:
 		return
 
 	if scorer == "player":
@@ -200,6 +209,7 @@ func end_game(winner: String):
 		LanServer.last_lobby_reason = "Winning score of %d reached." % win_score
 		LanServer.broadcast_status(LanServer.last_match_result + " • returning to lobby")
 	ball.visible = false
+	score_label.visible = false
 	background.z_index = 2
 	game_over = true
 	SFX.play_win()
@@ -223,6 +233,7 @@ func _on_restart_pressed():
 	SFX.play_win()
 	background.z_index = -3
 	ball.visible = true
+	score_label.visible = true
 	player_score = 0
 	opponent_score = 0
 	game_over = false
@@ -245,3 +256,43 @@ func _update_connection_label() -> void:
 		var ping := "%d ms" % LanServer.player_latency[id] if LanServer.player_latency.has(id) else "..."
 		connections.append("%s: %s" % ["Left" if i == 0 else "Right", ping])
 	get_node("../UI/ConnectionLabel").text = " | ".join(connections)
+
+func _apply_options() -> void:
+	ball.max_speed = GameSettings.values.max_ball_speed
+	ball.low_speed_increase_on_paddle_hit = GameSettings.values.low_multiplier
+	ball.high_speed_increase_on_paddle_hit = GameSettings.values.high_multiplier
+	ball.linear_velocity = ball.linear_velocity.limit_length(ball.max_speed)
+	win_score = int(GameSettings.values.win_score)
+	GameSettings.apply_shader(get_node(crt_overlay_path))
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_SPACE]:
+		if game_over or returning_to_lobby:
+			return
+		get_viewport().set_input_as_handled()
+		manual_paused = true
+		get_tree().paused = true
+		menus.show_pause(not remote_paddles.is_empty())
+		if not connection_paused:
+			_broadcast_match_status()
+
+func _resume_match() -> void:
+	manual_paused = false
+	menus.hide_menu()
+	get_tree().paused = connection_paused or game_over
+	if not game_over:
+		check_win()
+	if not game_over and not connection_paused:
+		if match_starting:
+			LanServer.broadcast_status("Get ready • " + countdown.number.text)
+		else:
+			_broadcast_match_status()
+
+func _leave_match() -> void:
+	if not remote_paddles.is_empty():
+		LanServer.last_lobby_reason = "Host left the paused match."
+		_return_to_lobby()
+	else:
+		Engine.time_scale = 1.0
+		get_tree().paused = false
+		get_tree().change_scene_to_file("res://main_menu.tscn")

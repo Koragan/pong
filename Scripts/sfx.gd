@@ -11,6 +11,9 @@ var win_stream: AudioStreamWAV
 func _ready():
 	add_child(_player_a)
 	add_child(_player_b)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	GameSettings.changed.connect(_apply_volume)
+	_apply_volume()
 
 	paddle_hit_stream = generate_tone(880.0, 0.06, "square")
 	wall_bounce_stream = generate_tone(440.0, 0.05, "square")
@@ -64,3 +67,7 @@ func play_win():
 func play_countdown(beat: int) -> void:
 	_player_b.stream = generate_tone(440.0 + beat * 110.0, 0.18 if beat < 3 else 0.3, "square", 0.2)
 	_player_b.play()
+
+func _apply_volume() -> void:
+	_player_a.volume_linear = GameSettings.values.sfx_volume
+	_player_b.volume_linear = GameSettings.values.sfx_volume

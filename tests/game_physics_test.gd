@@ -45,6 +45,54 @@ func _run() -> void:
 	check(hits.has("OpponentPaddle") and ball.linear_velocity.x < 0, "ball bounces off remote right paddle at maximum speed")
 	await launch_at_paddle(ball, Vector2(140, 231), Vector2(-1500, 0))
 	check(hits.has("PlayerPaddle") and ball.linear_velocity.x > 0, "ball bounces off remote left paddle at maximum speed")
+	# Exercise both paddle corners with the paddle at each movement limit.
+	for name in ["PlayerPaddle", "OpponentPaddle"]:
+		var paddle = current_scene.get_node(name)
+		var direction := 1.0 if name == "PlayerPaddle" else -1.0
+		for at_top in [true, false]:
+			paddle.target_y = paddle.min_y if at_top else paddle.max_y
+			await create_timer(0.3).timeout
+			var corner_y: float = paddle.target_y - 49.0 if at_top else paddle.target_y + 49.0
+			await launch_at_paddle(ball, Vector2(paddle.position.x + direction * 45.0, corner_y), Vector2(-direction * 1500.0, -100.0 if at_top else 100.0))
+			check(ball.linear_velocity.x * direction > 0.0 and not ball.is_recovering, name + " corner returns into court")
+			check(ball.position.y >= 46.0 and ball.position.y <= 396.0, name + " corner stays inside horizontal walls")
+		paddle.target_y = 231.0
+		await create_timer(0.3).timeout
+	# Sweep a phone-controlled paddle into a ball near the upper wall.
+	var moving_paddle = current_scene.get_node("PlayerPaddle")
+	moving_paddle.target_y = 180.0
+	await create_timer(0.3).timeout
+	ball.freeze = true
+	await wait_for_physics()
+	ball.global_position = Vector2(85, 105)
+	await wait_for_physics()
+	ball.freeze = false
+	PhysicsServer2D.body_set_state(ball.get_rid(), PhysicsServer2D.BODY_STATE_TRANSFORM, Transform2D(0.0, Vector2(85, 105)))
+	ball.linear_velocity = Vector2(-150, -150)
+	moving_paddle.target_y = moving_paddle.min_y
+	await create_timer(0.15).timeout
+	check(ball.position.x > 97.0 and ball.linear_velocity.x > 0.0 and not ball.is_recovering, "moving paddle ejects squeezed ball toward the court")
+	moving_paddle.target_y = 231.0
+	# A ball behind a paddle must not award a point on every goal-wall contact.
+	ball.freeze = true
+	manager.player_score = 0
+	manager.opponent_score = 0
+	ball.score_armed = true
+	ball.freeze = false
+	var goal = current_scene.get_node("Walls/East")
+	for i in range(5):
+		ball._on_body_entered(goal)
+	check(manager.player_score == 1, "repeated goal contacts award only one point before returning to midfield")
+	ball.reset_ball(true)
+	ball._on_body_entered(goal)
+	check(manager.player_score == 2, "a new serve can score again")
+	ball.angry_pause_duration = 0.05
+	ball.recover_travel_duration = 0.05
+	ball._trigger_angry_recovery()
+	await process_frame
+	check(ball.is_recovering and ball.freeze, "angry recovery freezes physics during its animation")
+	await create_timer(0.2).timeout
+	check(not ball.is_recovering and not ball.freeze and ball.linear_velocity.length() > 0.0, "angry recovery resumes a fresh moving serve")
 	ball.freeze = true
 	manager.player_score = 0
 	manager.opponent_score = 0
@@ -52,6 +100,7 @@ func _run() -> void:
 	for i in range(4):
 		manager._on_score_point("player")
 	check(not manager.game_over and manager.player_score == 4, "match continues below winning score")
+	ball.reset_ball(true)
 	# Miss the right paddle and score through an actual ball/wall collision.
 	await launch_at_paddle(ball, Vector2(790, 70), Vector2(500, 0))
 	manager._on_score_point("opponent")

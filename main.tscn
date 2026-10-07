@@ -246,6 +246,7 @@ scale = Vector2(0.53, 0.53)
 texture = ExtResource("8_kek77")
 
 [node name="ConnectionLabel" type="Label" parent="UI" unique_id=1148451976]
+visible = false
 offset_left = 12.0
 offset_top = 8.0
 offset_right = 280.0
@@ -264,6 +265,7 @@ grow_vertical = 2
 color = Color(0, 0, 0, 0.95)
 
 [node name="CenterContainer" type="CenterContainer" parent="UI/ConnectionPanel" unique_id=1939220186]
+visible = false
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -271,6 +273,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/ConnectionPanel/CenterContainer" unique_id=1360620283]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 24
 
@@ -280,6 +283,7 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="BackButton" type="Button" parent="UI/ConnectionPanel/CenterContainer/VBoxContainer" unique_id=1133342018]
+visible = false
 layout_mode = 2
 text = "Return to lobby"
 
